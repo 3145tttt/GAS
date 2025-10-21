@@ -1,0 +1,53 @@
+model:
+  path: configs/ldm/model_lsun_beds256.yaml
+  type: LDM
+  conditional: false
+  t_eps: null
+  guidance_scale: null
+
+dataset:
+  teacher_pkl: data/teachers/ldm/lsun_beds256/dataset.pkl
+  use_latents: true
+  use_condition: false
+  train_size: null
+  batch_size: 8
+  validation_batch_size: 64
+  validation_size: 1000
+  size_vis: 16
+  num_workers: 0
+
+teacher_solver_config:
+  steps: 20 
+  order: 3 
+  time_type: time_uniform
+  variant: bh2
+  t_eps: 0.001
+  guidance_scale: null
+
+student_solver_config:
+  steps: null
+  order: null
+  t_eps: 0.001
+  t_parametrization: mu_logit
+  use_theory_coef: true
+  guidance_scale: null
+
+  loss_config:
+    loss_type: null
+    loss_key: loss_l1_latents
+    disc_weight: 1
+    disc_type: latent_3
+    disc_lr: 0.00001
+
+training:
+  n_iters: 30000
+  lr: 0.001
+  iters_to_accumulate: 1
+  ema_decay: 0.999
+
+logging:
+  project_name: GAS
+  eval_freq: 500
+  checkpoint_freq: 500
+  log_weights_freq: 10
+  run_name: null

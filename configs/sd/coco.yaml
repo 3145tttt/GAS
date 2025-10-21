@@ -1,0 +1,53 @@
+model:
+  path: configs/sd/v1-inference.yaml
+  type: SD
+  conditional: true
+  t_eps: null
+  guidance_scale: null
+  prompts_path: data/coco_captions.txt 
+  # Use coco_captions from https://github.com/vinhsuhi/LD3/blob/ec1bf603fb19696966ca30198ed209ae6488a3e5/data/coco_captions.txt
+
+dataset:
+  teacher_pkl: null
+  use_latents: true
+  use_condition: true
+  train_size: null
+  batch_size: 4
+  validation_batch_size: 16
+  validation_size: 128
+  size_vis: 16
+  num_workers: 0
+
+teacher_solver_config:
+  steps: null 
+  order: 2
+  t_eps: 0.001
+  guidance_scale: 7.5
+
+student_solver_config:
+  steps: null
+  order: null
+  t_eps: 0.001
+  t_parametrization: mu_logit
+  use_theory_coef: true
+  guidance_scale: 7.5
+
+  loss_config:
+    loss_type: null
+    loss_key: loss_l1_latents
+    disc_weight: 1
+    disc_url_type: latent_4
+    disc_lr: 0.00001
+
+training:
+  n_iters: 2000
+  lr: 0.001
+  iters_to_accumulate: 1
+  ema_decay: 0.999
+
+logging:
+  project_name: GAS
+  eval_freq: 500
+  checkpoint_freq: 500
+  log_weights_freq: 10
+  run_name: null

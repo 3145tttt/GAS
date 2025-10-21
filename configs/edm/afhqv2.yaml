@@ -1,0 +1,53 @@
+model:
+  path: pretrained/edm/edm-afhqv2-64x64-uncond-vp.pkl
+  type: EDM
+  conditional: false
+  t_eps: null
+  guidance_scale: null
+
+dataset:
+  teacher_pkl: data/teachers/edm/afhqv2/dataset.pkl
+  use_latents: false
+  use_condition: false
+  train_size: null
+  batch_size: 24
+  validation_batch_size: 128
+  validation_size: 1000
+  size_vis: 16
+  num_workers: 0
+
+teacher_solver_config:
+  steps: 20
+  order: 3
+  time_type: logSNR
+  variant: bh1
+  t_eps: 0.0001
+  guidance_scale: null
+
+student_solver_config:
+  steps: null
+  order: null
+  t_eps: 0.0001
+  t_parametrization: mu_logit
+  use_theory_coef: true
+  guidance_scale: null
+
+  loss_config:
+    loss_type: null
+    loss_key: loss_lpips
+    disc_weight: 1
+    disc_type: FFHQ-64x64
+    disc_lr: 0.00001
+
+training:
+  n_iters: 10000
+  lr: 0.001
+  iters_to_accumulate: 1
+  ema_decay: 0.999
+
+logging:
+  project_name: GAS
+  eval_freq: 500
+  checkpoint_freq: 500
+  log_weights_freq: 10
+  run_name: null
