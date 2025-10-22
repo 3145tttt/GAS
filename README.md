@@ -5,7 +5,7 @@
 ![Teaser image](docs/teaser_1920.jpg)
 
 <br>**GAS: Improving Discretization of Diffusion ODEs via Generalized Adversarial Solver**<br>
-Aleksandr Oganov, Ilya Bykov, [Eva Neudachina](https://github.com/neudachina), Mishan Aliev, Alexander Tolmachev, Alexander Sidorov, Aleksandr Zuev, Andrey Okhotin, Denis Rakitin, Aibek Alanov
+Aleksandr Oganov, Ilya Bykov, [Eva Neudachina](https://github.com/neudachina), [Mishan Aliev](https://github.com/thecrazymage), Alexander Tolmachev, Alexander Sidorov, Aleksandr Zuev, Andrey Okhotin, Denis Rakitin, Aibek Alanov
 <br>https://arxiv.org/abs/2510.17699<br>
 
 Abstract: *While diffusion models achieve state-of-the-art generation quality, they still suffer from computationally expensive sampling. Recent works address this issue with gradient-based optimization methods that distill a few-step ODE diffusion solver from the full sampling process, reducing the number of function evaluations from dozens to just a few. However, these approaches often rely on intricate training techniques and do not explicitly focus on preserving fine-grained details. In this paper, we introduce the **Generalized Solver (GS)**: a simple parameterization of the ODE sampler that does not require additional training tricks and improves quality over existing approaches. We further combine the original distillation loss with adversarial training, which mitigates artifacts and enhances detail fidelity. We call the resulting method the **Generalized Adversarial Solver (GAS)** and demonstrate its superior performance compared to existing solver training methods under similar resource constraints.*
