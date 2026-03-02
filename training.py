@@ -10,7 +10,7 @@ from tqdm import tqdm
 import wandb
 from evaluate import NOT_LOG_KEYS, evaluate_wrapper
 from src.gas.gs_wrapper import GSWrapper
-from src.gas.synt_data import SyntDataset
+from src.gas.synt_data import SyntDataLoaders
 from src.gas.utils.loggers import log_end_img, log_grads, log_t_steps, log_weights
 
 
@@ -18,7 +18,7 @@ def train(
     config: ConfigDict,
     gs_wrapper: GSWrapper,
     ema: ExponentialMovingAverage,
-    data: SyntDataset,
+    data: SyntDataLoaders,
     optim: torch.optim.Adam,
     device: torch.device,
 ):
