@@ -105,6 +105,8 @@ class GSWrapper(nn.Module):
     # timesteps logic
     def get_t_steps(self, **kwargs) -> torch.Tensor:
         """Get generation timesteps."""
+        if self.steps == 1:
+            return torch.tensor([1., self.t_eps], device=self.mu_logit.device)
         logits = self.mu_logit
         t = self.get_mu_t_steps(logits)
         

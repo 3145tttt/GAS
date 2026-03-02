@@ -27,7 +27,7 @@ from training import train
 @click.option(
     "--student_step",
     metavar="INT",
-    type=click.IntRange(4, 10),
+    type=click.IntRange(1, 10),
     help="Number of student steps.",
 )
 @click.option(
