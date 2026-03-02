@@ -24,8 +24,6 @@ class DistAdversarialTraining:
         self.Discriminator.requires_grad_(False)
 
         self.Opt = torch.optim.Adam(self.Discriminator.parameters(), lr=config_loss.disc_lr)
-        self.adv_type = config_loss.get("adv_type", "Relativistic")
-        assert self.adv_type in ["Traditional", " Relativistic"], f"config_loss.adv_type = {self.adv_type}"
 
     def ZeroCenteredGradientPenalty(self, Samples, Critics):
         Gradient, = torch.autograd.grad(outputs=Critics.sum(), inputs=Samples, create_graph=True)
@@ -36,11 +34,6 @@ class DistAdversarialTraining:
 
         FakeLogits = self.Discriminator(FakeSamples, Conditions)
         RealLogits = self.Discriminator(RealSamples, Conditions)
-
-        if self.adv_type == "Traditional":
-            FakeLogits = self.Discriminator(FakeSamples, Conditions)
-            AdversarialLoss = -nn.functional.softplus(-FakeLogits)
-            return (Scale * AdversarialLoss), [x.detach() for x in [AdversarialLoss, FakeLogits]]
 
         RelativisticLogits = FakeLogits - RealLogits
         AdversarialLoss = nn.functional.softplus(-RelativisticLogits)
@@ -60,12 +53,6 @@ class DistAdversarialTraining:
         else:
             R1Penalty = torch.zeros_like(RealLogits)
             R2Penalty = torch.zeros_like(RealLogits)
-
-        if self.adv_type == "Traditional":
-            AdversarialLoss = nn.functional.softplus(-FakeLogits) + nn.functional.softplus(RealLogits)
-            DiscriminatorLoss = AdversarialLoss + (Gamma / 2) * (R1Penalty + R2Penalty)
-            return Scale * DiscriminatorLoss, [x.detach() for x in [AdversarialLoss, FakeLogits, R1Penalty, R2Penalty]]
-
         RelativisticLogits = RealLogits - FakeLogits
         AdversarialLoss = nn.functional.softplus(-RelativisticLogits)
 
