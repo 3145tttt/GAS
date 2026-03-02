@@ -2,7 +2,7 @@
 [![arXiv](https://img.shields.io/badge/arXiv-2510.17699-b31b1b.svg)](https://arxiv.org/abs/2510.17699)
 
 
-![Teaser image](docs/teaser_1920.jpg)
+![Teaser image](docs/teaser_gas.png)
 
 <br>**GAS: Improving Discretization of Diffusion ODEs via Generalized Adversarial Solver**<br>
 Aleksandr Oganov, [Ilya Bykov](https://github.com/philurame), [Eva Neudachina](https://github.com/neudachina), [Mishan Aliev](https://github.com/thecrazymage), Alexander Tolmachev, Alexander Sidorov, Aleksandr Zuev, Andrey Okhotin, [Denis Rakitin](https://github.com/RakitinDen), Aibek Alanov
