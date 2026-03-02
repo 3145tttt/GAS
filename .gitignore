@@ -164,8 +164,8 @@ cython_debug/
 #.idea/
 
 *.npz
-*.png
 *wandb
+*data/*.png
 *data/teachers
 *checkpoints
 *.pt
