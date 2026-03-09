@@ -7,11 +7,10 @@ from ml_collections import ConfigDict
 from torch_ema import ExponentialMovingAverage
 from tqdm import tqdm
 
-import wandb
 from evaluate import NOT_LOG_KEYS, evaluate_wrapper
 from src.gas.gs_wrapper import GSWrapper
 from src.gas.synt_data import SyntDataLoaders
-from src.gas.utils.loggers import log_end_img, log_grads, log_t_steps, log_weights
+from src.gas.utils.loggers import log_end_img, log_grads, log_t_steps, log_weights, log_metrics, setup_logger, finish_logger
 
 
 def train(
@@ -34,15 +33,7 @@ def train(
     print(config)
     print("=" * 90 + "\n")
 
-    wandb.login(force=True)
-    wandb.init(
-        project=config.logging.project_name,
-        name=f"{config.logging.run_name}_{date_str}",
-        config=config,
-        save_code=True,
-    )
-    wandb.run.log_code("./", include_fn=lambda path: path.endswith(".py"))
-
+    setup_logger(config=config, date_str=date_str)
     global_step = 0
     pbar = tqdm(range(config.training.n_iters), dynamic_ncols=True)
 
@@ -82,7 +73,7 @@ def train(
                 if k not in NOT_LOG_KEYS:
                     log_d[f"train/{k}"] = v.mean().item()
 
-            wandb.log(log_d, step=global_step)
+            log_metrics(log_d, step=global_step)
 
             if global_step % config.logging.eval_freq == 0 or global_step == 1:
                 if "x0_s" not in res_d:
@@ -125,5 +116,4 @@ def train(
                 )
 
             pbar.update(1)
-
-    wandb.finish()
+    finish_logger()

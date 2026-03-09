@@ -2,10 +2,9 @@ from collections import defaultdict
 
 import torch
 
-import wandb
 from src.gas.gs_wrapper import GSWrapper
 from src.gas.synt_data import SyntDataLoaders
-from src.gas.utils.loggers import log_end_img, log_t_steps_plot
+from src.gas.utils.loggers import log_end_img, log_t_steps_plot, log_metrics
 
 NOT_LOG_KEYS = ["timesteps", "x0_s", "x0_t", "latents_s"]
 
@@ -57,7 +56,7 @@ def evaluate_wrapper(
         if k not in NOT_LOG_KEYS:
             d_res[f"val_stat/{k}{suff}"] = v / num_elements
 
-    wandb.log(d_res, step=global_step)
+    log_metrics(d_res, step=global_step)
     if "x0_s" not in out_d:
         out_d["x0_s"] = gs_wrapper.model.decode(out_d["latents_s"])
     log_end_img(

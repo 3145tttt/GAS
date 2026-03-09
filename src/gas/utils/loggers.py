@@ -1,16 +1,79 @@
+import comet_ml
+import wandb
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from torchvision.utils import make_grid
+import os
 
-import wandb
 from src.gas.gs_wrapper import GSWrapper
 
 
+EXP = None
+LOGGER = "None"
+
+def setup_comet(config, date_str):
+    global EXP
+    EXP = comet_ml.start(
+        project_name=config.logging.project_name
+    )
+    EXP.log_parameters(config.to_dict())
+    EXP.set_name(f"{config.logging.run_name}_{date_str}")
+    # code
+    for path in os.listdir("./"):
+        if path.endswith(".py"):
+            EXP.log_code(file_name=path)
+    EXP.log_code(folder="./src/gas")
+
+def setup_wandb(config, date_str):
+    wandb.login(force=True)
+    wandb.init(
+        project=config.logging.project_name,
+        name=f"{config.logging.run_name}_{date_str}",
+        config=config,
+        save_code=True,
+    )
+    # code
+    wandb.run.log_code("./", include_fn=lambda path: path.endswith(".py"))
+
+def setup_logger(config, date_str):
+    global LOGGER
+    LOGGER = config.logging.get("logger_type", "wandb")
+    assert LOGGER in ["wandb", "comet_ml"], f"logger_type = {LOGGER}"
+    if LOGGER == "wandb":
+        setup_wandb(config, date_str)
+    else:
+        setup_comet(config, date_str)
+
+def finish_logger():
+    global LOGGER, EXP
+    if LOGGER == "wandb":
+        wandb.finish()
+    elif LOGGER == "comet_ml":
+        EXP.end()
+    else:
+        raise TypeError(f"Logger = {LOGGER}")
+
+# Logging functions
 def log_plt_fig(fig, key: str, global_step: int) -> None:
+    global LOGGER, EXP
     fig.tight_layout()
-    wandb.log({key: wandb.Image(fig)}, step=global_step)
+    if LOGGER == "wandb":
+        wandb.log({key: wandb.Image(fig)}, step=global_step)
+    elif LOGGER == "comet_ml":
+        EXP.log_figure(figure=fig, figure_name=key, step=global_step)
+    else:
+        raise TypeError(f"Logger = {LOGGER}")
     plt.close("all")
+
+def log_metrics(d, step):
+    global LOGGER, EXP
+    if LOGGER == "wandb":
+        wandb.log(d, step=step)
+    elif LOGGER == "comet_ml":
+        EXP.log_metrics(d, step=step)
+    else:
+        raise TypeError(f"Logger = {LOGGER}")
 
 
 @torch.no_grad()
@@ -81,7 +144,7 @@ def log_weights(model: GSWrapper, global_step: int, suff: str = "") -> None:
             for i, v in enumerate(data):
                 d[f"{key}_{t}/{i:02d}"] = v
 
-    wandb.log(d, step=global_step)
+    log_metrics(d, step=global_step)
 
 
 @torch.no_grad()
@@ -97,7 +160,7 @@ def log_grads(model: GSWrapper, global_step: int) -> None:
             for i, v in enumerate(data):
                 d[f"{key}_{t}/{i:02d}"] = v
 
-    wandb.log(d, step=global_step)
+    log_metrics(d, step=global_step)
 
 
 @torch.no_grad()
@@ -108,4 +171,4 @@ def log_t_steps(t_steps: torch.Tensor, global_step: int, key: str = "t_stats") -
     for i, t in enumerate(t_steps):
         d[f"{key}/t_{i:02d}"] = t
 
-    wandb.log(d, step=global_step)
+    log_metrics(d, step=global_step)
