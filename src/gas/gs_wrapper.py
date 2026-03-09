@@ -92,12 +92,12 @@ class GSWrapper(nn.Module):
             solver.__setattr__(aname, self.__getattr__(aname))
 
         # theory coef
-        solver.use_theory_coef = self.solver_config.use_theory_coef
-        if not solver.use_theory_coef:
+        if not self.solver_config.use_theory_coef:
+            assert self.solver_config.mode in ["wo_guidance", "S4S", "S4S_PC"]
+            solver.mode = self.solver_config.mode
             solver.init_coefs(
                 steps=self.steps,
-                order=self.order,
-                timesteps=self.get_t_steps()
+                order=self.order
             )
         # end init solver
         self.solver = solver

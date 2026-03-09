@@ -11,20 +11,18 @@ class GeneralizedSolver:
     and calculating standard theoretical coefficients.
     """
     
-    def __init__(self, model_fn: Any, noise_schedule: NoiseScheduleVP, use_theory_coef=True):
+    def __init__(self, model_fn: Any, noise_schedule: NoiseScheduleVP):
         """Initialize the Generalized Solver for Generalised Solver wrapper.
         
         Args:
             model_fn (model_wrapper.model_fn): A noise prediction model function, 
                 which accepts the continuous-time input.
             noise_schedule (NoiseScheduleVP): Noise scheduler.
-            use_theory_coef (bool): If is set to True, 
-                then theoretical guidance is used. Default is True. 
         """
         self.model_class = model_fn
         self.noise_schedule = noise_schedule
 
-        self.use_theory_coef = use_theory_coef
+        self.mode = "GS"
 
     def model_fn(self, x: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
         """Convert the model to the data prediction model.
@@ -107,16 +105,19 @@ class GeneralizedSolver:
         return a_ii, alpha_t, (r0, r1), (phi_1, phi_2, phi_3)
 
     @torch.no_grad()
-    def init_coefs(self, steps: int, order: int, timesteps: List[float]) -> None:
+    def init_coefs(self, steps: int, order: int) -> None:
         """Initialize coefficients for LMS solvers similar to DPM-Solver.
         Sets up the necessary coefficients for LMS solvers based on the specified order and number of steps.
 
         Args:
             steps (int): Number of sampling steps.
             order (int): Solver order (determines the number of previous steps used).
-            timesteps (List[float]): List of timesteps for which to compute coefficients.
         """
+        assert steps >= order
         assert order >= 1, f"order  = {order}"
+        assert self.mode in  ["wo_guidance", "S4S", "S4S_PC"], f"solver mode = {self.mode}"
+        timesteps = self.get_time_steps()
+        assert timesteps.shape[0] - 1 == steps, f"timestep.shape = {timesteps.shape}"
         t_prev_list = [timesteps[0]]
         model_2 = torch.eye(2).double()
         model_prev_2 = [model_2[1], model_2[0]]
@@ -126,26 +127,32 @@ class GeneralizedSolver:
         for step in range(1, steps + 1):
             t = timesteps[step]
             cur_order = min(step, order)
-            c1, c2, c3 = 1., 0., 0.
-            _, alpha_t, (_, _), (phi_1, _, _) = self.calc_vals(t_prev_list, t)
+            a_ii, alpha_t, (_, _), (phi_1, _, _) = self.calc_vals(t_prev_list, t)
+            c1, c2, c3 = - alpha_t * phi_1, 0., 0.
             C = - alpha_t * phi_1
             if cur_order == 2:
-                model_res = self.second_update(0., model_prev_2, t_prev_list, t, [0] * cur_order) / C
+                model_res = self.second_update(0., model_prev_2, t_prev_list, t, [0] * cur_order)
                 c1, c2 = model_res
             elif cur_order >= 3:
                 model_prev_list = [torch.zeros(3)] * (cur_order - 3) + model_prev_3
-                model_res = self.unbound_update(0., model_prev_list, t_prev_list, t, [0] * cur_order) / C
+                model_res = self.unbound_update(0., model_prev_list, t_prev_list, t, [0] * cur_order)
                 c1, c2, c3 = model_res
-            self.c1_diff[step - 1] = c1
-            self.c2_diff[step - 1] = c2
-            self.c3_diff[step - 1] = c3
+            if self.mode == "wo_guidance":
+                self.a1_diff[step - 1] = a_ii
+                self.c1_diff[step - 1] = c1
+                self.c2_diff[step - 1] = c2 
+                self.c3_diff[step - 1] = c3
+            else:
+                self.c1_diff[step - 1] = c1 / C
+                self.c2_diff[step - 1] = c2 / C
+                self.c3_diff[step - 1] = c3 / C
             self.params_step += 1
 
             t_prev_list.append(t)
             t_prev_list = t_prev_list[-order:]
         self.params_step = 0
 
-    def not_theory_update(
+    def s4s_update(
         self, 
         x: torch.Tensor, 
         model_prev_list: List[torch.Tensor], 
@@ -182,6 +189,8 @@ class GeneralizedSolver:
             ci = self.__getattribute__(f"c{i}_diff")[self.params_step]
             x_t = x_t + C * ci * model_prev_list[-i]
 
+        if self.mode == "S4S":
+            return x_t
         # LMS + PC
         # "A PC solver further refines this initial prediction, by subsequently applying Eq. (5) from S4S paper".
         x_t = a_ii * x_t
@@ -190,6 +199,23 @@ class GeneralizedSolver:
             x_t = x_t + C * ai * model_prev_list[-i]
 
         return x_t
+    
+    def wo_guidance_update(
+        self, 
+        x: torch.Tensor, 
+        model_prev_list: List[torch.Tensor], 
+        t_prev_list: List[float], 
+        t: float, 
+        x_prev_list: List[torch.Tensor]
+    ) -> torch.Tensor:
+        x_t = 0.
+        prev_num = len(model_prev_list)
+        for i in range(1, prev_num + 1):
+            ci = self.__getattribute__(f"c{i}_diff")[self.params_step]
+            ai = self.__getattribute__(f"a{i}_diff")[self.params_step]
+            x_t = x_t + ci * model_prev_list[-i] + ai * x_prev_list[-i]
+
+        return x_t    
 
     def first_update(
         self, x: torch.Tensor, 
@@ -340,15 +366,18 @@ class GeneralizedSolver:
         """
         
         assert order >= 1, f"Solver order must be >= 1, got {order}"
-        if self.use_theory_coef:
+        assert self.mode in ["GS", "wo_guidance", "S4S", "S4S_PC"], f"solver mode = {self.mode}"
+        if self.mode == "GS":
             if order == 1:
                 x_t = self.first_update(x, model_prev_list, t_prev_list, t, x_prev_list)
             elif order == 2:
                 x_t = self.second_update(x, model_prev_list, t_prev_list, t, x_prev_list)
             else:
                 x_t = self.unbound_update(x, model_prev_list, t_prev_list, t, x_prev_list)
+        elif self.mode == "wo_guidance":
+            x_t = self.wo_guidance_update(x, model_prev_list, t_prev_list, t, x_prev_list)
         else:
-            x_t = self.not_theory_update(x, model_prev_list, t_prev_list, t, x_prev_list)
+            x_t = self.s4s_update(x, model_prev_list, t_prev_list, t, x_prev_list)
 
         self.params_step = self.params_step + 1
         return x_t
